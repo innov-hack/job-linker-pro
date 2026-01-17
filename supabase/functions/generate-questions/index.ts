@@ -5,6 +5,151 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// System prompt from Python template - concise and focused
+const QUESTION_SYSTEM_PROMPT = `You are an expert technical recruiter. Generate concise, role-relevant interview questions.
+Output a JSON array of strings (no extra keys, no markdown).`;
+
+// Extract keywords from job spec for dynamic fallback questions
+function extractKeywords(text: string): string[] {
+  const candidates = [
+    "distributed systems", "microservices", "kubernetes", "docker", "grpc",
+    "go", "java", "c++", "python", "sql", "nosql", "cloud", "performance",
+    "scalability", "reliability", "react", "node", "typescript", "javascript",
+    "aws", "azure", "gcp", "machine learning", "data science", "api",
+  ];
+  const lowered = text.toLowerCase();
+  const hits = candidates.filter(item => lowered.includes(item));
+  return hits.length > 0 ? hits : ["backend systems", "system design", "performance"];
+}
+
+// Extract capitalized phrases (company names, technologies) from CV
+function extractCapitalizedPhrases(text: string): string[] {
+  const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}/g) || [];
+  const deduped: string[] = [];
+  for (const match of matches) {
+    if (!deduped.includes(match)) {
+      deduped.push(match);
+    }
+  }
+  return deduped.slice(0, 5);
+}
+
+// Generate dynamic fallback questions based on job spec and CV
+function getFallbackQuestions(jobSpecText: string, cvText: string, count: number): string[] {
+  const keywords = extractKeywords(jobSpecText);
+  const orgs = extractCapitalizedPhrases(cvText);
+  const focus = keywords[0] || "scalable backend services";
+  const org = orgs[0] || "a recent role";
+
+  const baseQuestions = [
+    `Describe your experience with ${focus} in production systems.`,
+    "Tell us about a project where you improved latency, throughput, or reliability.",
+    "How have you designed or operated distributed systems at scale?",
+    `Your resume mentions ${org}. What was your most impactful contribution there?`,
+    "Which job requirements are you least familiar with, and how would you ramp up quickly?",
+    "Share an example of collaborating with SRE, security, or product partners on a launch.",
+    "Walk through a tough debugging incident and how you resolved it.",
+    "What would your 30-60-90 day plan look like for this role?",
+  ];
+  return baseQuestions.slice(0, count);
+}
+
+// Check if a line is a prompt leak
+function isPromptLeak(lowered: string): boolean {
+  if (lowered.startsWith("analysis") || lowered.startsWith("we need") || 
+      lowered.startsWith("let's") || lowered.startsWith("should be") ||
+      lowered.startsWith("questions:") || lowered.startsWith("6 questions")) {
+    return true;
+  }
+  if (lowered.startsWith("you are ")) return true;
+  if (lowered.startsWith("output") || lowered.startsWith("provide just") || lowered.startsWith("generate")) {
+    return true;
+  }
+  if (lowered.includes("output json") || lowered.includes("json array")) return true;
+  if (lowered.includes("job spec text") || lowered.includes("cv text")) return true;
+  if (lowered.includes("system prompt")) return true;
+  if (lowered.startsWith("system:") || lowered.startsWith("assistant:") || lowered.startsWith("user:")) {
+    return true;
+  }
+  return false;
+}
+
+// Clean question line - remove numbering, bullets, quotes
+function cleanQuestionLine(line: string): string {
+  let cleaned = line.replace(/^\s*[-*]\s*/, "");
+  cleaned = cleaned.replace(/^\s*\d+\s*[).:-]\s*/, "");
+  cleaned = cleaned.trim().replace(/^["']|["']$/g, "");
+  return cleaned.length >= 8 ? cleaned : "";
+}
+
+// Sanitize questions - remove duplicates and prompt leaks
+function sanitizeQuestions(questions: string[]): string[] {
+  const sanitized: string[] = [];
+  const seen = new Set<string>();
+  
+  for (const question of questions) {
+    if (!question) continue;
+    const lowered = question.toLowerCase().trim();
+    if (isPromptLeak(lowered)) continue;
+    if (seen.has(question)) continue;
+    seen.add(question);
+    sanitized.push(question);
+  }
+  return sanitized;
+}
+
+// Parse questions from AI response
+function parseQuestions(content: string): string[] {
+  if (!content) return [];
+
+  // Try to parse as JSON array first
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) {
+      return parsed.map(item => {
+        if (typeof item === "string") return cleanQuestionLine(item);
+        if (typeof item === "object" && item.question) return cleanQuestionLine(item.question);
+        if (typeof item === "object" && item.text) return cleanQuestionLine(item.text);
+        return "";
+      }).filter(Boolean);
+    }
+  } catch {}
+
+  // Try to extract JSON array from response
+  const start = content.indexOf("[");
+  const end = content.lastIndexOf("]");
+  if (start !== -1 && end !== -1 && end > start) {
+    try {
+      const parsed = JSON.parse(content.slice(start, end + 1));
+      if (Array.isArray(parsed)) {
+        return parsed.map(item => {
+          if (typeof item === "string") return cleanQuestionLine(item);
+          if (typeof item === "object" && item.question) return cleanQuestionLine(item.question);
+          return "";
+        }).filter(Boolean);
+      }
+    } catch {}
+  }
+
+  // Fallback: parse line by line
+  const candidates: string[] = [];
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const lower = line.toLowerCase();
+    if (lower.startsWith("analysis") || lower.startsWith("we need") || 
+        lower.startsWith("output") || lower.startsWith("let's craft") ||
+        lower.startsWith("should be") || lower.startsWith("provide just") ||
+        lower.startsWith("json") || lower.startsWith("questions:") ||
+        lower.startsWith("6 questions")) {
+      continue;
+    }
+    const cleaned = cleanQuestionLine(line);
+    if (cleaned) candidates.push(cleaned);
+  }
+  return candidates;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -18,46 +163,17 @@ serve(async (req) => {
       throw new Error("FEATHERLESS_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are a senior talent acquisition specialist creating highly personalized interview questions for Talently, an AI-powered recruitment platform.
+    const jobSpecText = `${jobTitle || ""}\n${jobDescription || ""}\n${jobRequirements || ""}`;
+    const targetCount = 5;
 
-Your task is to generate exactly 5 deeply personalized interview questions that:
+    // User prompt from Python template
+    const userPrompt = `Job spec text:
+${jobSpecText}
 
-1. **DIRECTLY REFERENCE** specific skills, technologies, projects, or experiences mentioned in the candidate's CV
-2. **MAP TO SPECIFIC JOB REQUIREMENTS** - each question should probe how the candidate's background addresses a concrete requirement from the job posting
-3. **USE THE CANDIDATE'S NAME** or reference their specific role/company history when relevant
-4. **AVOID GENERIC QUESTIONS** - never ask questions like "Tell me about yourself" or "What are your strengths"
-5. **PROBE DEPTH** - ask follow-up style questions that dig into the specifics of what they've done
+CV text:
+${cvText || "CV not provided"}
 
-Question types to include:
-- 1-2 questions connecting their SPECIFIC past projects/roles to the job's technical requirements
-- 1-2 questions about specific skills from their CV that match the job requirements
-- 1 question about a potential gap or growth area based on comparing their CV to job requirements
-
-Return ONLY a JSON array of 5 question strings. No other text, explanation, or markdown formatting.
-Example format: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]`;
-
-    const userPrompt = `Analyze the following candidate CV and job posting, then generate 5 HIGHLY PERSONALIZED interview questions.
-
-=== JOB POSTING ===
-TITLE: ${jobTitle || "Not specified"}
-
-DESCRIPTION: 
-${jobDescription || "Not provided"}
-
-KEY REQUIREMENTS:
-${jobRequirements || "Not provided"}
-
-=== CANDIDATE CV ===
-${cvText || "CV not uploaded - generate questions based on the job requirements, but make them specific to the listed skills and responsibilities"}
-
-=== INSTRUCTIONS ===
-Generate exactly 5 interview questions that:
-1. Reference SPECIFIC items from the candidate's CV (company names, technologies, project descriptions)
-2. Directly connect to SPECIFIC requirements from the job posting
-3. Are impossible to answer with generic responses - they must demonstrate real experience
-4. Help assess if this specific candidate is a strong match for this specific role
-
-Return ONLY a JSON array of 5 questions.`;
+Generate ${targetCount} questions.`;
 
     console.log("Generating questions with Featherless AI (Qwen2.5-72B-Instruct)...");
 
@@ -72,7 +188,7 @@ Return ONLY a JSON array of 5 questions.`;
       body: JSON.stringify({
         model: "Qwen/Qwen2.5-72B-Instruct",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: QUESTION_SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.7,
@@ -107,39 +223,27 @@ Return ONLY a JSON array of 5 questions.`;
 
     console.log("Raw AI response:", content);
 
-    // Parse the JSON array from the response
-    let questions: string[];
-    try {
-      // Try to extract JSON array from the response
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        questions = JSON.parse(jsonMatch[0]);
-      } else {
-        // Fallback: split by numbered lines
-        questions = content
-          .split(/\d+\.\s+/)
-          .filter((q: string) => q.trim())
-          .slice(0, 5)
-          .map((q: string) => q.replace(/^["']|["']$/g, "").trim());
+    // Parse and sanitize questions
+    let questions = sanitizeQuestions(parseQuestions(content));
+
+    // Fill with fallback questions if needed
+    if (questions.length < targetCount) {
+      const fallback = getFallbackQuestions(jobSpecText, cvText || "", targetCount);
+      for (const item of fallback) {
+        if (questions.length >= targetCount) break;
+        if (!questions.includes(item)) {
+          questions.push(item);
+        }
       }
-    } catch (parseError) {
-      console.error("Failed to parse questions:", parseError);
-      // Fallback questions
-      questions = [
-        "Tell us about your most relevant experience for this role.",
-        "What interests you most about this position?",
-        "Describe a challenging project you've worked on and how you handled it.",
-        "How do you approach learning new skills or technologies?",
-        "What unique value would you bring to our team?",
-      ];
     }
 
-    // Ensure we have exactly 5 questions
-    while (questions.length < 5) {
-      questions.push("What additional information would you like to share about yourself?");
+    // Use only fallback if parsing failed completely
+    if (questions.length === 0) {
+      console.log("Parse failed, using fallback questions");
+      questions = getFallbackQuestions(jobSpecText, cvText || "", targetCount);
     }
-    questions = questions.slice(0, 5);
 
+    questions = questions.slice(0, targetCount);
     console.log("Generated questions:", questions);
 
     return new Response(
@@ -148,17 +252,20 @@ Return ONLY a JSON array of 5 questions.`;
     );
   } catch (error) {
     console.error("Error generating questions:", error);
+    
+    // Return fallback questions on error
+    const fallbackQuestions = [
+      "Describe your experience with scalable backend services in production systems.",
+      "Tell us about a project where you improved latency, throughput, or reliability.",
+      "How have you designed or operated distributed systems at scale?",
+      "Walk through a tough debugging incident and how you resolved it.",
+      "What would your 30-60-90 day plan look like for this role?",
+    ];
+    
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : "Failed to generate questions",
-        // Return fallback questions so the user can still proceed
-        questions: [
-          "Tell us about your most relevant experience for this role.",
-          "What interests you most about this position?",
-          "Describe a challenging project you've worked on and how you handled it.",
-          "How do you approach learning new skills or technologies?",
-          "What unique value would you bring to our team?",
-        ]
+        questions: fallbackQuestions
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

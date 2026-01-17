@@ -314,11 +314,11 @@ export default function CreateJob() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="company">Company Name</Label>
+                    <Label htmlFor="company">Department</Label>
                     <Input
                       id="company"
                       name="company"
-                      placeholder="e.g. Acme Corp"
+                      placeholder="e.g. Engineering"
                       value={formData.company}
                       onChange={handleInputChange}
                       className="input-modern"

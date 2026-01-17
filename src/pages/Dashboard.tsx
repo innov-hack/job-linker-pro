@@ -230,22 +230,29 @@ export default function Dashboard() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Badge
-                                variant="secondary"
-                                className={`cursor-pointer ${
-                                  job.status === "Active" 
-                                    ? "bg-success/10 text-success border-0 hover:bg-success/20" 
-                                    : "bg-destructive/10 text-destructive border-0 hover:bg-destructive/20"
-                                }`}
-                              >
-                                {job.status}
-                              </Badge>
+                              <button type="button" className="focus:outline-none">
+                                <Badge
+                                  variant="secondary"
+                                  className={`cursor-pointer ${
+                                    job.status === "Active" 
+                                      ? "bg-success/10 text-success border-0 hover:bg-success/20" 
+                                      : job.status === "Paused"
+                                      ? "bg-warning/10 text-warning border-0 hover:bg-warning/20"
+                                      : "bg-destructive/10 text-destructive border-0 hover:bg-destructive/20"
+                                  }`}
+                                >
+                                  {job.status}
+                                </Badge>
+                              </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => updateJobStatus(job.id, "Active")}>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem onSelect={() => updateJobStatus(job.id, "Active")}>
                                 Active
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateJobStatus(job.id, "Terminated")}>
+                              <DropdownMenuItem onSelect={() => updateJobStatus(job.id, "Paused")}>
+                                Paused
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => updateJobStatus(job.id, "Terminated")}>
                                 <StopCircle className="mr-2 h-4 w-4" />
                                 Terminated
                               </DropdownMenuItem>

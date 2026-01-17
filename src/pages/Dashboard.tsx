@@ -41,20 +41,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const generateActivityData = () => {
-  // Create more realistic varied data with weekday peaks
+  // High values with good variance for visual appeal
   const baseData = [
-    { day: "Mon", opens: 65 },
-    { day: "Tue", opens: 82 },
-    { day: "Wed", opens: 94 },
-    { day: "Thu", opens: 78 },
-    { day: "Fri", opens: 88 },
-    { day: "Sat", opens: 45 },
-    { day: "Sun", opens: 38 },
+    { day: "Mon", opens: 156 },
+    { day: "Tue", opens: 189 },
+    { day: "Wed", opens: 245 },
+    { day: "Thu", opens: 198 },
+    { day: "Fri", opens: 221 },
+    { day: "Sat", opens: 124 },
+    { day: "Sun", opens: 98 },
   ];
-  // Add some randomness to make it dynamic
+  // Add some randomness
   return baseData.map(item => ({
     ...item,
-    opens: item.opens + Math.floor(Math.random() * 15) - 7, // ±7 variance
+    opens: item.opens + Math.floor(Math.random() * 20) - 10,
   }));
 };
 

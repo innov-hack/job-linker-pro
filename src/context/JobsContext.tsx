@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 export interface Candidate {
   id: string;
@@ -34,6 +34,8 @@ interface JobsContextType {
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
+
+const STORAGE_KEY = "linkrecruit_jobs";
 
 // Initial sample data
 const initialJobs: Job[] = [
@@ -98,8 +100,30 @@ const initialJobs: Job[] = [
   },
 ];
 
+// Load jobs from localStorage or use initial data
+const loadJobsFromStorage = (): Job[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Failed to load jobs from storage:", error);
+  }
+  return initialJobs;
+};
+
 export function JobsProvider({ children }: { children: ReactNode }) {
-  const [jobs, setJobs] = useState<Job[]>(initialJobs);
+  const [jobs, setJobs] = useState<Job[]>(loadJobsFromStorage);
+
+  // Persist jobs to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+    } catch (error) {
+      console.error("Failed to save jobs to storage:", error);
+    }
+  }, [jobs]);
 
   const addJob = (jobData: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">): Job => {
     const linkId = Math.random().toString(36).substring(2, 10);

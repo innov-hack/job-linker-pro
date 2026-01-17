@@ -32,6 +32,7 @@ interface JobsContextType {
   addJob: (job: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">) => Promise<Job>;
   addCandidate: (jobId: string, candidate: Omit<Candidate, "id" | "submittedAt">) => Promise<void>;
   incrementVisitors: (jobId: string) => Promise<void>;
+  incrementCompleted: (jobId: string) => Promise<void>;
   getJob: (jobId: string) => Promise<Job | undefined>;
   deleteJob: (jobId: string) => Promise<void>;
   updateJobStatus: (jobId: string, status: string) => Promise<void>;
@@ -168,15 +169,18 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   };
 
   const incrementVisitors = async (jobId: string) => {
-    const job = jobs.find(j => j.id === jobId);
-    if (!job) return;
+    // Increment visitors only (page visit)
+    const { data: currentJob } = await supabase
+      .from('jobs')
+      .select('visitors')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (!currentJob) return;
 
     const { error } = await supabase
       .from('jobs')
-      .update({ 
-        visitors: job.visitors + 1, 
-        opens: job.opens + 1 
-      })
+      .update({ visitors: currentJob.visitors + 1 })
       .eq('id', jobId);
 
     if (error) {
@@ -187,7 +191,36 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     setJobs(prev =>
       prev.map(j =>
         j.id === jobId
-          ? { ...j, visitors: j.visitors + 1, opens: j.opens + 1 }
+          ? { ...j, visitors: j.visitors + 1 }
+          : j
+      )
+    );
+  };
+
+  const incrementCompleted = async (jobId: string) => {
+    // Increment completed (opens) when submission happens
+    const { data: currentJob } = await supabase
+      .from('jobs')
+      .select('opens')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (!currentJob) return;
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({ opens: currentJob.opens + 1 })
+      .eq('id', jobId);
+
+    if (error) {
+      console.error("Failed to increment completed:", error);
+      return;
+    }
+
+    setJobs(prev =>
+      prev.map(j =>
+        j.id === jobId
+          ? { ...j, opens: j.opens + 1 }
           : j
       )
     );
@@ -258,7 +291,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       loading, 
       addJob, 
       addCandidate, 
-      incrementVisitors, 
+      incrementVisitors,
+      incrementCompleted, 
       getJob, 
       deleteJob, 
       updateJobStatus,

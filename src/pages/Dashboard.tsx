@@ -80,7 +80,7 @@ export default function Dashboard() {
       bgColor: "bg-primary/10",
     },
     {
-      title: "Total Opens",
+      title: "Total Completed",
       value: totalOpens.toString(),
       change: "+12% from last week",
       icon: Eye,
@@ -205,7 +205,7 @@ export default function Dashboard() {
                       <TableHead>Job Title</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Opens</TableHead>
+                      <TableHead className="text-right">Completed</TableHead>
                       <TableHead className="text-right">Visitors</TableHead>
                       <TableHead></TableHead>
                     </TableRow>

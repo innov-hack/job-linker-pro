@@ -44,11 +44,11 @@ const generateActivityData = () => {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return days.map(day => ({
     day,
-    opens: Math.floor(Math.random() * 80) + 20, // Random between 20-100
+    opens: Math.floor(Math.random() * 60) + 40, // Random between 40-100
   }));
 };
 
-const activityData = generateActivityData();
+const [activityData] = useState(generateActivityData);
 
 export default function Dashboard() {
   const { jobs, loading, deleteJob, updateJobStatus } = useJobs();
@@ -155,26 +155,19 @@ export default function Dashboard() {
           <div className="lg:col-span-1">
             <div className="card-elevated p-6">
               <h2 className="text-lg font-semibold mb-6">Weekly Activity</h2>
-              <div className="flex items-end justify-between gap-2 h-40">
+              <div className="flex items-end justify-between gap-2 h-48">
                 {activityData.map((data) => (
                   <div
                     key={data.day}
                     className="flex flex-col items-center gap-2 flex-1"
                   >
                     <div
-                      className="w-full rounded-t-md bg-primary/20 hover:bg-primary/30 transition-colors relative"
+                      className="w-full rounded-t-md bg-primary hover:bg-primary/80 transition-colors"
                       style={{
                         height: `${(data.opens / maxOpens) * 100}%`,
-                        minHeight: "8px",
+                        minHeight: "12px",
                       }}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary transition-all duration-300"
-                        style={{
-                          height: `${(data.opens / maxOpens) * 100}%`,
-                        }}
-                      />
-                    </div>
+                    />
                     <span className="text-xs text-muted-foreground">
                       {data.day}
                     </span>

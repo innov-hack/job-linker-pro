@@ -142,6 +142,8 @@ export default function Apply() {
     }
   };
 
+  const isUploadFormValid = firstName.trim() && lastName.trim() && cvFile && motivationFile;
+
   const handleUploadSubmit = () => {
     if (!firstName.trim() || !lastName.trim()) {
       toast({
@@ -345,11 +347,19 @@ export default function Apply() {
               </div>
             </div>
 
+            {/* Validation hint */}
+            {!isUploadFormValid && (
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Please fill in your name and upload both documents to continue.
+              </p>
+            )}
+
             <Button
               type="button"
               variant="gradient"
               size="xl"
               className="w-full"
+              disabled={!isUploadFormValid}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

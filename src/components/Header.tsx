@@ -18,7 +18,7 @@ export function Header() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span>LinkRecruit</span>
+          <span>Talently</span>
         </Link>
 
         <nav className="flex items-center gap-1">

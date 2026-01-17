@@ -18,27 +18,46 @@ serve(async (req) => {
       throw new Error("FEATHERLESS_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are an expert HR interviewer who creates thoughtful, relevant interview questions. 
-Your task is to generate exactly 5 open-ended interview questions that:
-1. Are specific to the candidate's CV/resume and the job they're applying for
-2. Help assess the candidate's fit for the role
-3. Are professional and insightful
-4. Encourage detailed, meaningful responses
+    const systemPrompt = `You are a senior talent acquisition specialist creating highly personalized interview questions for Talently, an AI-powered recruitment platform.
 
-Return ONLY a JSON array of 5 question strings. No other text or explanation.
+Your task is to generate exactly 5 deeply personalized interview questions that:
+
+1. **DIRECTLY REFERENCE** specific skills, technologies, projects, or experiences mentioned in the candidate's CV
+2. **MAP TO SPECIFIC JOB REQUIREMENTS** - each question should probe how the candidate's background addresses a concrete requirement from the job posting
+3. **USE THE CANDIDATE'S NAME** or reference their specific role/company history when relevant
+4. **AVOID GENERIC QUESTIONS** - never ask questions like "Tell me about yourself" or "What are your strengths"
+5. **PROBE DEPTH** - ask follow-up style questions that dig into the specifics of what they've done
+
+Question types to include:
+- 1-2 questions connecting their SPECIFIC past projects/roles to the job's technical requirements
+- 1-2 questions about specific skills from their CV that match the job requirements
+- 1 question about a potential gap or growth area based on comparing their CV to job requirements
+
+Return ONLY a JSON array of 5 question strings. No other text, explanation, or markdown formatting.
 Example format: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]`;
 
-    const userPrompt = `Generate 5 interview questions for this candidate and job:
+    const userPrompt = `Analyze the following candidate CV and job posting, then generate 5 HIGHLY PERSONALIZED interview questions.
 
-JOB TITLE: ${jobTitle || "Not specified"}
+=== JOB POSTING ===
+TITLE: ${jobTitle || "Not specified"}
 
-JOB DESCRIPTION: ${jobDescription || "Not provided"}
+DESCRIPTION: 
+${jobDescription || "Not provided"}
 
-JOB REQUIREMENTS: ${jobRequirements || "Not provided"}
+KEY REQUIREMENTS:
+${jobRequirements || "Not provided"}
 
-CANDIDATE CV CONTENT: ${cvText || "CV not uploaded - generate general questions based on the job description"}
+=== CANDIDATE CV ===
+${cvText || "CV not uploaded - generate questions based on the job requirements, but make them specific to the listed skills and responsibilities"}
 
-Generate exactly 5 relevant, open-ended interview questions.`;
+=== INSTRUCTIONS ===
+Generate exactly 5 interview questions that:
+1. Reference SPECIFIC items from the candidate's CV (company names, technologies, project descriptions)
+2. Directly connect to SPECIFIC requirements from the job posting
+3. Are impossible to answer with generic responses - they must demonstrate real experience
+4. Help assess if this specific candidate is a strong match for this specific role
+
+Return ONLY a JSON array of 5 questions.`;
 
     console.log("Generating questions with Featherless AI (Qwen2.5-72B-Instruct)...");
 
@@ -47,8 +66,8 @@ Generate exactly 5 relevant, open-ended interview questions.`;
       headers: {
         Authorization: `Bearer ${FEATHERLESS_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://lovable.dev",
-        "X-Title": "Job Application Questions Generator",
+        "HTTP-Referer": "https://talently.app",
+        "X-Title": "Talently Interview Questions Generator",
       },
       body: JSON.stringify({
         model: "Qwen/Qwen2.5-72B-Instruct",

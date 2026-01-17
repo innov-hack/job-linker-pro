@@ -306,10 +306,15 @@ export default function Apply() {
             </div>
 
             <Button
+              type="button"
               variant="gradient"
               size="xl"
               className="w-full"
-              onClick={handleUploadSubmit}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleUploadSubmit();
+              }}
             >
               Continue to Questions
               <ArrowRight className="ml-2 h-5 w-5" />

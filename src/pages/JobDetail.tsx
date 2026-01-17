@@ -172,43 +172,56 @@ export default function JobDetail() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {topCandidates.map((candidate) => (
-                          <TableRow key={candidate.id}>
-                            <TableCell className="font-medium">
-                              {candidate.firstName}
-                            </TableCell>
-                            <TableCell>{candidate.lastName}</TableCell>
-                            <TableCell className="text-right">
-                              {candidate.score}/100
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" asChild>
-                                <a
-                                  href={candidate.cvUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                  CV
-                                </a>
-                              </Button>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" asChild>
-                                <a
-                                  href={candidate.motivationUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                  Letter
-                                </a>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {topCandidates.map((candidate) => {
+                          const hasValidCvUrl = candidate.cvUrl && !candidate.cvUrl.startsWith('blob:');
+                          const hasValidMotivationUrl = candidate.motivationUrl && !candidate.motivationUrl.startsWith('blob:');
+                          
+                          return (
+                            <TableRow key={candidate.id}>
+                              <TableCell className="font-medium">
+                                {candidate.firstName}
+                              </TableCell>
+                              <TableCell>{candidate.lastName}</TableCell>
+                              <TableCell className="text-right">
+                                {candidate.score}/100
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {hasValidCvUrl ? (
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <a
+                                      href={candidate.cvUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                      CV
+                                    </a>
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Not available</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {hasValidMotivationUrl ? (
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <a
+                                      href={candidate.motivationUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                      Letter
+                                    </a>
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Not available</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>

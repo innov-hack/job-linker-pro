@@ -145,21 +145,16 @@ export default function Apply() {
   const isUploadFormValid = Boolean(firstName.trim() && lastName.trim() && cvFile && motivationFile);
 
   const handleUploadSubmit = () => {
-    // Debug: alert to confirm button click
-    alert(`Button clicked! firstName: "${firstName}", lastName: "${lastName}"`);
-    
     // For testing - allow proceeding with just names
     if (!firstName.trim() || !lastName.trim()) {
-      toast({
-        title: "Missing information",
-        description: "Please enter your first and last name.",
-        variant: "destructive",
-      });
+      alert("Missing name fields");
       return;
     }
     
-    // Proceed to questions
+    // Set step to questions
+    alert("Setting step to questions...");
     setStep("questions");
+    alert("Step has been set to questions - check if UI updated");
   };
 
   const handleAnswerChange = (index: number, value: string) => {

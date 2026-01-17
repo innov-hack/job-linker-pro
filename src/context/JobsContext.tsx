@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Candidate {
   id: string;
@@ -27,135 +28,138 @@ export interface Job {
 
 interface JobsContextType {
   jobs: Job[];
-  addJob: (job: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">) => Job;
-  addCandidate: (jobId: string, candidate: Omit<Candidate, "id" | "score" | "submittedAt">) => void;
-  incrementVisitors: (jobId: string) => void;
-  getJob: (jobId: string) => Job | undefined;
-  deleteJob: (jobId: string) => void;
-  updateJobStatus: (jobId: string, status: string) => void;
+  loading: boolean;
+  addJob: (job: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">) => Promise<Job>;
+  addCandidate: (jobId: string, candidate: Omit<Candidate, "id" | "score" | "submittedAt">) => Promise<void>;
+  incrementVisitors: (jobId: string) => Promise<void>;
+  getJob: (jobId: string) => Promise<Job | undefined>;
+  deleteJob: (jobId: string) => Promise<void>;
+  updateJobStatus: (jobId: string, status: string) => Promise<void>;
+  refreshJobs: () => Promise<void>;
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
 
-const STORAGE_KEY = "linkrecruit_jobs";
-
-// Initial sample data
-const initialJobs: Job[] = [
-  {
-    id: "sample-1",
-    title: "Senior Software Engineer",
-    company: "Acme Corp",
-    location: "San Francisco, CA",
-    link: "https://linkrecruit.app/job/sample1",
-    created: "2024-01-15",
-    status: "Active",
-    opens: 234,
-    visitors: 156,
-    candidates: [
-      {
-        id: "c1",
-        firstName: "Sarah",
-        lastName: "Johnson",
-        cvFileName: "sarah-johnson-cv.pdf",
-        cvUrl: "https://example.com/cv/sarah-johnson.pdf",
-        motivationFileName: "sarah-johnson-motivation.pdf",
-        motivationUrl: "https://example.com/motivation/sarah-johnson.pdf",
-        score: 95,
-        submittedAt: "2024-01-16",
-      },
-      {
-        id: "c2",
-        firstName: "Michael",
-        lastName: "Chen",
-        cvFileName: "michael-chen-cv.pdf",
-        cvUrl: "https://example.com/cv/michael-chen.pdf",
-        motivationFileName: "michael-chen-motivation.pdf",
-        motivationUrl: "https://example.com/motivation/michael-chen.pdf",
-        score: 92,
-        submittedAt: "2024-01-16",
-      },
-    ],
-  },
-  {
-    id: "sample-2",
-    title: "Product Designer",
-    company: "Design Studio",
-    location: "Remote",
-    link: "https://linkrecruit.app/job/sample2",
-    created: "2024-01-14",
-    status: "Active",
-    opens: 189,
-    visitors: 98,
-    candidates: [],
-  },
-  {
-    id: "sample-3",
-    title: "Marketing Manager",
-    company: "Growth Co",
-    location: "New York, NY",
-    link: "https://linkrecruit.app/job/sample3",
-    created: "2024-01-12",
-    status: "Active",
-    opens: 145,
-    visitors: 67,
-    candidates: [],
-  },
-];
-
-// Load jobs from localStorage or use initial data
-const loadJobsFromStorage = (): Job[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error("Failed to load jobs from storage:", error);
-  }
-  return initialJobs;
-};
+// Helper to convert DB row to Job interface
+const mapDbJobToJob = (dbJob: any, candidates: any[] = []): Job => ({
+  id: dbJob.id,
+  title: dbJob.title,
+  company: dbJob.company,
+  location: dbJob.location,
+  link: dbJob.link,
+  created: dbJob.created,
+  status: dbJob.status,
+  opens: dbJob.opens,
+  visitors: dbJob.visitors,
+  candidates: candidates.map(c => ({
+    id: c.id,
+    firstName: c.first_name,
+    lastName: c.last_name,
+    cvFileName: c.cv_file_name,
+    cvUrl: c.cv_url,
+    motivationFileName: c.motivation_file_name,
+    motivationUrl: c.motivation_url,
+    score: c.score,
+    submittedAt: c.submitted_at,
+  })),
+});
 
 export function JobsProvider({ children }: { children: ReactNode }) {
-  const [jobs, setJobs] = useState<Job[]>(loadJobsFromStorage);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Persist jobs to localStorage whenever they change
-  useEffect(() => {
+  const fetchJobs = useCallback(async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-    } catch (error) {
-      console.error("Failed to save jobs to storage:", error);
-    }
-  }, [jobs]);
+      const { data: jobsData, error: jobsError } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const addJob = (jobData: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">): Job => {
+      if (jobsError) throw jobsError;
+
+      const { data: candidatesData, error: candidatesError } = await supabase
+        .from('candidates')
+        .select('*');
+
+      if (candidatesError) throw candidatesError;
+
+      const jobsWithCandidates = (jobsData || []).map(job => {
+        const jobCandidates = (candidatesData || []).filter(c => c.job_id === job.id);
+        return mapDbJobToJob(job, jobCandidates);
+      });
+
+      setJobs(jobsWithCandidates);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const addJob = async (jobData: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">): Promise<Job> => {
     const linkId = Math.random().toString(36).substring(2, 10);
-    const newJob: Job = {
-      id: linkId,
-      title: jobData.title || "Untitled Position",
-      company: jobData.company || "Unknown Company",
-      location: jobData.location || "Not specified",
-      link: `https://linkrecruit.app/job/${linkId}`,
-      created: new Date().toISOString().split("T")[0],
-      status: "Active",
-      opens: 0,
-      visitors: 0,
-      candidates: [],
-    };
     
-    setJobs((prev) => [newJob, ...prev]);
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert({
+        id: linkId,
+        title: jobData.title || "Untitled Position",
+        company: jobData.company || "Unknown Company",
+        location: jobData.location || "Not specified",
+        link: `${window.location.origin}/apply/${linkId}`,
+        status: "Active",
+        opens: 0,
+        visitors: 0,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const newJob = mapDbJobToJob(data, []);
+    setJobs(prev => [newJob, ...prev]);
     return newJob;
   };
 
-  const addCandidate = (jobId: string, candidateData: Omit<Candidate, "id" | "score" | "submittedAt">) => {
+  const addCandidate = async (jobId: string, candidateData: Omit<Candidate, "id" | "score" | "submittedAt">) => {
+    const candidateId = Math.random().toString(36).substring(2, 10);
+    
+    const { data, error } = await supabase
+      .from('candidates')
+      .insert({
+        id: candidateId,
+        job_id: jobId,
+        first_name: candidateData.firstName,
+        last_name: candidateData.lastName,
+        cv_file_name: candidateData.cvFileName,
+        cv_url: candidateData.cvUrl,
+        motivation_file_name: candidateData.motivationFileName,
+        motivation_url: candidateData.motivationUrl,
+        score: Math.floor(Math.random() * 30) + 70,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     const newCandidate: Candidate = {
-      id: Math.random().toString(36).substring(2, 10),
-      ...candidateData,
-      score: Math.floor(Math.random() * 30) + 70, // Random score between 70-100
-      submittedAt: new Date().toISOString().split("T")[0],
+      id: data.id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      cvFileName: data.cv_file_name,
+      cvUrl: data.cv_url,
+      motivationFileName: data.motivation_file_name,
+      motivationUrl: data.motivation_url,
+      score: data.score,
+      submittedAt: data.submitted_at,
     };
 
-    setJobs((prev) =>
-      prev.map((job) =>
+    setJobs(prev =>
+      prev.map(job =>
         job.id === jobId
           ? { ...job, candidates: [...job.candidates, newCandidate] }
           : job
@@ -163,34 +167,103 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const incrementVisitors = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId
-          ? { ...job, visitors: job.visitors + 1, opens: job.opens + 1 }
-          : job
+  const incrementVisitors = async (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({ 
+        visitors: job.visitors + 1, 
+        opens: job.opens + 1 
+      })
+      .eq('id', jobId);
+
+    if (error) {
+      console.error("Failed to increment visitors:", error);
+      return;
+    }
+
+    setJobs(prev =>
+      prev.map(j =>
+        j.id === jobId
+          ? { ...j, visitors: j.visitors + 1, opens: j.opens + 1 }
+          : j
       )
     );
   };
 
-  const getJob = (jobId: string) => {
-    return jobs.find((job) => job.id === jobId);
+  const getJob = async (jobId: string): Promise<Job | undefined> => {
+    // First check local state
+    const localJob = jobs.find(job => job.id === jobId);
+    if (localJob) return localJob;
+
+    // If not in local state, fetch from database
+    const { data: jobData, error: jobError } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (jobError || !jobData) return undefined;
+
+    const { data: candidatesData } = await supabase
+      .from('candidates')
+      .select('*')
+      .eq('job_id', jobId);
+
+    return mapDbJobToJob(jobData, candidatesData || []);
   };
 
-  const deleteJob = (jobId: string) => {
-    setJobs((prev) => prev.filter((job) => job.id !== jobId));
+  const deleteJob = async (jobId: string) => {
+    const { error } = await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', jobId);
+
+    if (error) {
+      console.error("Failed to delete job:", error);
+      return;
+    }
+
+    setJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
-  const updateJobStatus = (jobId: string, status: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
+  const updateJobStatus = async (jobId: string, status: string) => {
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status })
+      .eq('id', jobId);
+
+    if (error) {
+      console.error("Failed to update job status:", error);
+      return;
+    }
+
+    setJobs(prev =>
+      prev.map(job =>
         job.id === jobId ? { ...job, status } : job
       )
     );
   };
 
+  const refreshJobs = async () => {
+    setLoading(true);
+    await fetchJobs();
+  };
+
   return (
-    <JobsContext.Provider value={{ jobs, addJob, addCandidate, incrementVisitors, getJob, deleteJob, updateJobStatus }}>
+    <JobsContext.Provider value={{ 
+      jobs, 
+      loading, 
+      addJob, 
+      addCandidate, 
+      incrementVisitors, 
+      getJob, 
+      deleteJob, 
+      updateJobStatus,
+      refreshJobs 
+    }}>
       {children}
     </JobsContext.Provider>
   );

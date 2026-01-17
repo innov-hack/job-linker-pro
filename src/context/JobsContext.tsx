@@ -31,6 +31,8 @@ interface JobsContextType {
   addCandidate: (jobId: string, candidate: Omit<Candidate, "id" | "score" | "submittedAt">) => void;
   incrementVisitors: (jobId: string) => void;
   getJob: (jobId: string) => Job | undefined;
+  deleteJob: (jobId: string) => void;
+  updateJobStatus: (jobId: string, status: string) => void;
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
@@ -175,8 +177,20 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return jobs.find((job) => job.id === jobId);
   };
 
+  const deleteJob = (jobId: string) => {
+    setJobs((prev) => prev.filter((job) => job.id !== jobId));
+  };
+
+  const updateJobStatus = (jobId: string, status: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, status } : job
+      )
+    );
+  };
+
   return (
-    <JobsContext.Provider value={{ jobs, addJob, addCandidate, incrementVisitors, getJob }}>
+    <JobsContext.Provider value={{ jobs, addJob, addCandidate, incrementVisitors, getJob, deleteJob, updateJobStatus }}>
       {children}
     </JobsContext.Provider>
   );

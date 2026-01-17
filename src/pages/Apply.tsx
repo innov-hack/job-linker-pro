@@ -142,9 +142,11 @@ export default function Apply() {
     }
   };
 
-  const isUploadFormValid = firstName.trim() && lastName.trim() && cvFile && motivationFile;
+  const isUploadFormValid = Boolean(firstName.trim() && lastName.trim() && cvFile && motivationFile);
 
   const handleUploadSubmit = () => {
+    console.log("handleUploadSubmit called", { firstName, lastName, cvFile, motivationFile, isUploadFormValid });
+    
     if (!firstName.trim() || !lastName.trim()) {
       toast({
         title: "Missing information",
@@ -161,6 +163,8 @@ export default function Apply() {
       });
       return;
     }
+    
+    console.log("Setting step to questions");
     setStep("questions");
   };
 

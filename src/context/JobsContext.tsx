@@ -30,7 +30,7 @@ interface JobsContextType {
   jobs: Job[];
   loading: boolean;
   addJob: (job: Omit<Job, "id" | "created" | "status" | "opens" | "visitors" | "candidates">) => Promise<Job>;
-  addCandidate: (jobId: string, candidate: Omit<Candidate, "id" | "score" | "submittedAt">) => Promise<void>;
+  addCandidate: (jobId: string, candidate: Omit<Candidate, "id" | "submittedAt">) => Promise<void>;
   incrementVisitors: (jobId: string) => Promise<void>;
   getJob: (jobId: string) => Promise<Job | undefined>;
   deleteJob: (jobId: string) => Promise<void>;
@@ -125,7 +125,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return newJob;
   };
 
-  const addCandidate = async (jobId: string, candidateData: Omit<Candidate, "id" | "score" | "submittedAt">) => {
+  const addCandidate = async (jobId: string, candidateData: Omit<Candidate, "id" | "submittedAt">) => {
     const candidateId = Math.random().toString(36).substring(2, 10);
     
     const { data, error } = await supabase
@@ -139,7 +139,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         cv_url: candidateData.cvUrl,
         motivation_file_name: candidateData.motivationFileName,
         motivation_url: candidateData.motivationUrl,
-        score: Math.floor(Math.random() * 30) + 70,
+        score: candidateData.score,
       })
       .select()
       .single();

@@ -218,6 +218,57 @@ export default function Apply() {
     });
   }
 
+  // Upload file to storage
+  async function uploadFile(file: File, folder: string): Promise<string> {
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filePath = `${folder}/${timestamp}_${sanitizedName}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('candidate-documents')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      throw new Error(`Failed to upload ${file.name}`);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('candidate-documents')
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
+  }
+
+  // Evaluate answers using AI
+  async function evaluateAnswers(): Promise<number> {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("evaluate-answers", {
+        body: {
+          questions,
+          answers,
+          jobTitle: job?.title || "",
+          jobDescription,
+          jobRequirements,
+        },
+      });
+
+      if (fnError) {
+        console.error("Evaluation error:", fnError);
+        return 70; // Default score on error
+      }
+
+      console.log("Evaluation result:", data);
+      return data?.score || 70;
+    } catch (err) {
+      console.error("Error evaluating answers:", err);
+      return 70;
+    }
+  }
+
   // Submit application
   async function handleSubmit() {
     const hasEmptyAnswer = answers.some(a => !a.trim());
@@ -230,13 +281,30 @@ export default function Apply() {
     setSubmitting(true);
 
     try {
+      // Upload files to storage
+      let cvUrl = "";
+      let motivationUrl = "";
+
+      if (cvFile) {
+        cvUrl = await uploadFile(cvFile, "cvs");
+      }
+      
+      if (motivationFile) {
+        motivationUrl = await uploadFile(motivationFile, "motivation-letters");
+      }
+
+      // Evaluate answers with AI
+      const score = await evaluateAnswers();
+      console.log("Candidate score:", score);
+
       await addCandidate(jobId!, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         cvFileName: cvFile?.name || "not-uploaded.pdf",
-        cvUrl: cvFile ? URL.createObjectURL(cvFile) : "",
+        cvUrl,
         motivationFileName: motivationFile?.name || "not-uploaded.pdf",
-        motivationUrl: motivationFile ? URL.createObjectURL(motivationFile) : "",
+        motivationUrl,
+        score,
       });
       
       fireConfetti();

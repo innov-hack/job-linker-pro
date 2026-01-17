@@ -69,10 +69,12 @@ export type Database = {
           company: string
           created: string
           created_at: string
+          description: string | null
           id: string
           link: string
           location: string
           opens: number
+          requirements: string | null
           status: string
           title: string
           visitors: number
@@ -81,10 +83,12 @@ export type Database = {
           company: string
           created?: string
           created_at?: string
+          description?: string | null
           id: string
           link: string
           location: string
           opens?: number
+          requirements?: string | null
           status?: string
           title: string
           visitors?: number
@@ -93,10 +97,12 @@ export type Database = {
           company?: string
           created?: string
           created_at?: string
+          description?: string | null
           id?: string
           link?: string
           location?: string
           opens?: number
+          requirements?: string | null
           status?: string
           title?: string
           visitors?: number

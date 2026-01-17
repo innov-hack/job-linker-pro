@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, FileText, CheckCircle, ArrowRight, Send, Loader2 } from "lucide-react";
+import { Upload, FileText, CheckCircle, ArrowRight, Send, Loader2, Sparkles, PartyPopper } from "lucide-react";
 import { useJobs, Job } from "@/context/JobsContext";
 import { useToast } from "@/hooks/use-toast";
+import confetti from "canvas-confetti";
 
 type Step = "loading" | "upload" | "questions" | "complete" | "not-found";
 
@@ -32,6 +33,44 @@ export default function Apply() {
   const [motivationFile, setMotivationFile] = useState<File | null>(null);
   const [answers, setAnswers] = useState<string[]>(Array(5).fill(""));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fireConfetti = useCallback(() => {
+    // First burst
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899']
+    });
+
+    // Side cannons
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#6366f1', '#8b5cf6', '#a855f7']
+      });
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#d946ef', '#ec4899', '#f43f5e']
+      });
+    }, 200);
+
+    // Final celebration burst
+    setTimeout(() => {
+      confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.5, x: 0.5 },
+        colors: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#fbbf24']
+      });
+    }, 400);
+  }, []);
 
   useEffect(() => {
     const loadJob = async () => {
@@ -153,6 +192,7 @@ export default function Apply() {
         motivationUrl: URL.createObjectURL(motivationFile!),
       });
 
+      fireConfetti();
       setStep("complete");
     } catch (error) {
       console.error("Failed to submit application:", error);
@@ -370,21 +410,72 @@ export default function Apply() {
 
         {/* Step 3: Complete */}
         {step === "complete" && (
-          <div className="card-elevated p-6 sm:p-8 text-center">
-            <div className="flex justify-center mb-6">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle className="h-10 w-10 text-success" />
+          <div className="card-elevated p-8 sm:p-12 text-center animate-scale-in overflow-hidden relative">
+            {/* Decorative background elements */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10">
+              {/* Success icon with animation */}
+              <div className="flex justify-center mb-8">
+                <div className="relative">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-success to-emerald-400 shadow-lg shadow-success/30 animate-fade-in">
+                    <CheckCircle className="h-12 w-12 text-white" />
+                  </div>
+                  <div className="absolute -top-2 -right-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                    <Sparkles className="h-8 w-8 text-amber-400" />
+                  </div>
+                  <div className="absolute -bottom-1 -left-3 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+                    <PartyPopper className="h-7 w-7 text-primary" />
+                  </div>
+                </div>
               </div>
+
+              {/* Welcome message */}
+              <div className="space-y-4 mb-8">
+                <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
+                  Welcome to the Team! 🎉
+                </h2>
+                <p className="text-xl text-foreground font-medium animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  Well, almost... Your application is in!
+                </p>
+              </div>
+
+              {/* Message content */}
+              <div className="bg-muted/50 rounded-2xl p-6 mb-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                <p className="text-muted-foreground leading-relaxed">
+                  We're thrilled to have received your application for <span className="font-semibold text-foreground">{job.title}</span> at <span className="font-semibold text-foreground">{job.company}</span>. 
+                  Your responses have been carefully saved, and our team is excited to review your profile.
+                </p>
+              </div>
+
+              {/* What's next section */}
+              <div className="text-left bg-primary/5 rounded-2xl p-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  What happens next?
+                </h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">1.</span>
+                    Our hiring team will review your application within 3-5 business days
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">2.</span>
+                    If your profile matches our requirements, we'll reach out for the next steps
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">3.</span>
+                    Keep an eye on your inbox for updates from us!
+                  </li>
+                </ul>
+              </div>
+
+              {/* Footer message */}
+              <p className="mt-8 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                Thank you for taking the time to complete our application process. We appreciate your interest! ✨
+              </p>
             </div>
-            <h2 className="text-2xl font-bold mb-2">Thank You!</h2>
-            <p className="text-muted-foreground mb-6">
-              Your application has been successfully submitted. We appreciate you
-              taking the time to complete the interview process.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              The hiring team will review your application and get back to you
-              soon.
-            </p>
           </div>
         )}
       </div>

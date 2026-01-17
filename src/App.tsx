@@ -8,6 +8,7 @@ import { JobsProvider } from "@/context/JobsContext";
 import Landing from "./pages/Landing";
 import CreateJob from "./pages/CreateJob";
 import Dashboard from "./pages/Dashboard";
+import JobDetail from "./pages/JobDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/create" element={<CreateJob />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/job/:jobId" element={<JobDetail />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

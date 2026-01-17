@@ -178,15 +178,15 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {jobs.map((job) => (
+                      {jobs.map((job) => (
                       <TableRow key={job.id}>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{job.title}</p>
+                          <Link to={`/job/${job.id}`} className="block hover:opacity-80 transition-opacity">
+                            <p className="font-medium text-primary hover:underline">{job.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {job.company}
                             </p>
-                          </div>
+                          </Link>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {new Date(job.created).toLocaleDateString("en-US", {

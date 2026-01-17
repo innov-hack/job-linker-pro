@@ -48,11 +48,10 @@ const generateActivityData = () => {
   }));
 };
 
-const [activityData] = useState(generateActivityData);
-
 export default function Dashboard() {
   const { jobs, loading, deleteJob, updateJobStatus } = useJobs();
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
+  const [activityData] = useState(generateActivityData);
   const maxOpens = Math.max(...activityData.map((d) => d.opens), 1);
 
   if (loading) {

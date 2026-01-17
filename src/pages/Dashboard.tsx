@@ -40,29 +40,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const generateActivityData = () => {
-  // High values with good variance for visual appeal
-  const baseData = [
-    { day: "Mon", opens: 156 },
-    { day: "Tue", opens: 189 },
-    { day: "Wed", opens: 245 },
-    { day: "Thu", opens: 198 },
-    { day: "Fri", opens: 221 },
-    { day: "Sat", opens: 124 },
-    { day: "Sun", opens: 98 },
-  ];
-  // Add some randomness
-  return baseData.map(item => ({
-    ...item,
-    opens: item.opens + Math.floor(Math.random() * 20) - 10,
-  }));
-};
+const weeklyData = [
+  { day: "Mon", completed: 42, visitors: 68 },
+  { day: "Tue", completed: 58, visitors: 89 },
+  { day: "Wed", completed: 73, visitors: 112 },
+  { day: "Thu", completed: 51, visitors: 95 },
+  { day: "Fri", completed: 64, visitors: 103 },
+  { day: "Sat", completed: 28, visitors: 45 },
+  { day: "Sun", completed: 19, visitors: 32 },
+];
 
 export default function Dashboard() {
   const { jobs, loading, deleteJob, updateJobStatus } = useJobs();
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
-  const [activityData] = useState(generateActivityData);
-  const maxOpens = Math.max(...activityData.map((d) => d.opens), 1);
+  
+  const maxValue = Math.max(...weeklyData.map(d => Math.max(d.completed, d.visitors)));
 
   if (loading) {
     return (
@@ -160,36 +152,55 @@ export default function Dashboard() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Activity Chart */}
+          {/* Activity Chart - New Design */}
           <div className="lg:col-span-1">
             <div className="card-elevated p-6">
-              <h2 className="text-lg font-semibold mb-6">Weekly Activity</h2>
-              <div className="flex items-end justify-between gap-2 h-48">
-                {activityData.map((data) => (
-                  <div
-                    key={data.day}
-                    className="flex flex-col items-center gap-2 flex-1"
-                  >
-                    <div
-                      className="w-full rounded-t-md bg-primary hover:bg-primary/80 transition-colors"
-                      style={{
-                        height: `${(data.opens / maxOpens) * 100}%`,
-                        minHeight: "12px",
-                      }}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {data.day}
-                    </span>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold">Weekly Activity</h2>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Completed</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-accent" />
+                    <span className="text-muted-foreground">Visitors</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {weeklyData.map((data) => (
+                  <div key={data.day} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground font-medium w-8">{data.day}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {data.completed} / {data.visitors}
+                      </span>
+                    </div>
+                    <div className="flex gap-1 h-6">
+                      <div
+                        className="h-full rounded-md bg-primary transition-all duration-300 hover:opacity-80"
+                        style={{ width: `${(data.completed / maxValue) * 100}%` }}
+                      />
+                      <div
+                        className="h-full rounded-md bg-accent transition-all duration-300 hover:opacity-80"
+                        style={{ width: `${(data.visitors / maxValue) * 100}%` }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground">
-                  Total this week:{" "}
-                  <span className="font-semibold text-foreground">
-                    {activityData.reduce((sum, d) => sum + d.opens, 0)} opens
-                  </span>
-                </p>
+
+              <div className="mt-6 pt-4 border-t border-border flex justify-between text-sm">
+                <div>
+                  <p className="text-muted-foreground">Total Completed</p>
+                  <p className="font-bold text-lg">{weeklyData.reduce((sum, d) => sum + d.completed, 0)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-muted-foreground">Total Visitors</p>
+                  <p className="font-bold text-lg">{weeklyData.reduce((sum, d) => sum + d.visitors, 0)}</p>
+                </div>
               </div>
             </div>
           </div>

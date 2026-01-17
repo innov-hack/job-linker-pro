@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Link2,
@@ -7,6 +8,8 @@ import {
   Plus,
   ExternalLink,
   TrendingUp,
+  Trash2,
+  StopCircle,
 } from "lucide-react";
 import {
   Table,
@@ -18,6 +21,23 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useJobs } from "@/context/JobsContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const activityData = [
   { day: "Mon", opens: 45 },
@@ -30,7 +50,8 @@ const activityData = [
 ];
 
 export default function Dashboard() {
-  const { jobs } = useJobs();
+  const { jobs, deleteJob, updateJobStatus } = useJobs();
+  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
   const maxOpens = Math.max(...activityData.map((d) => d.opens));
 
   // Calculate KPIs from jobs data
@@ -195,12 +216,29 @@ export default function Dashboard() {
                           })}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className="bg-success/10 text-success border-0"
-                          >
-                            {job.status}
-                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Badge
+                                variant="secondary"
+                                className={`cursor-pointer ${
+                                  job.status === "Active" 
+                                    ? "bg-success/10 text-success border-0 hover:bg-success/20" 
+                                    : "bg-destructive/10 text-destructive border-0 hover:bg-destructive/20"
+                                }`}
+                              >
+                                {job.status}
+                              </Badge>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => updateJobStatus(job.id, "Active")}>
+                                Active
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => updateJobStatus(job.id, "Terminated")}>
+                                <StopCircle className="mr-2 h-4 w-4" />
+                                Terminated
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {job.opens}
@@ -208,12 +246,44 @@ export default function Dashboard() {
                         <TableCell className="text-right font-medium">
                           {job.visitors}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex items-center gap-1">
                           <Button variant="ghost" size="icon" asChild>
                             <a href={job.link} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           </Button>
+                          <AlertDialog open={jobToDelete === job.id} onOpenChange={(open) => !open && setJobToDelete(null)}>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setJobToDelete(job.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Job Posting</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{job.title}"? This action cannot be undone and all candidate data will be lost.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => {
+                                    deleteJob(job.id);
+                                    setJobToDelete(null);
+                                  }}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Trash2,
   StopCircle,
+  Loader2,
 } from "lucide-react";
 import {
   Table,
@@ -50,9 +51,20 @@ const activityData = [
 ];
 
 export default function Dashboard() {
-  const { jobs, deleteJob, updateJobStatus } = useJobs();
+  const { jobs, loading, deleteJob, updateJobStatus } = useJobs();
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
-  const maxOpens = Math.max(...activityData.map((d) => d.opens));
+  const maxOpens = Math.max(...activityData.map((d) => d.opens), 1);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate KPIs from jobs data
   const totalOpens = jobs.reduce((sum, job) => sum + job.opens, 0);

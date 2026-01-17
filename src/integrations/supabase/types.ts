@@ -14,7 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      candidates: {
+        Row: {
+          created_at: string
+          cv_file_name: string
+          cv_url: string
+          first_name: string
+          id: string
+          job_id: string
+          last_name: string
+          motivation_file_name: string
+          motivation_url: string
+          score: number
+          submitted_at: string
+        }
+        Insert: {
+          created_at?: string
+          cv_file_name: string
+          cv_url: string
+          first_name: string
+          id: string
+          job_id: string
+          last_name: string
+          motivation_file_name: string
+          motivation_url: string
+          score?: number
+          submitted_at?: string
+        }
+        Update: {
+          created_at?: string
+          cv_file_name?: string
+          cv_url?: string
+          first_name?: string
+          id?: string
+          job_id?: string
+          last_name?: string
+          motivation_file_name?: string
+          motivation_url?: string
+          score?: number
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          company: string
+          created: string
+          created_at: string
+          id: string
+          link: string
+          location: string
+          opens: number
+          status: string
+          title: string
+          visitors: number
+        }
+        Insert: {
+          company: string
+          created?: string
+          created_at?: string
+          id: string
+          link: string
+          location: string
+          opens?: number
+          status?: string
+          title: string
+          visitors?: number
+        }
+        Update: {
+          company?: string
+          created?: string
+          created_at?: string
+          id?: string
+          link?: string
+          location?: string
+          opens?: number
+          status?: string
+          title?: string
+          visitors?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

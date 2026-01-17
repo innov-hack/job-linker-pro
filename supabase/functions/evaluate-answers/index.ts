@@ -44,30 +44,55 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert HR evaluator assessing candidate responses to interview questions.
 
-Your task is to evaluate the quality of answers based on:
+Your task is to evaluate the quality of answers based on these criteria:
+
 1. **Relevance** (0-20): How well does the answer address the specific question asked?
-2. **Depth** (0-20): Does the answer provide specific examples, details, and insights?
+2. **Depth & Specificity** (0-20): Does the answer provide concrete examples, metrics, or specific experiences? Generic or vague answers score low.
 3. **Communication** (0-20): Is the answer clear, well-structured, and professional?
-4. **Job Fit** (0-20): Does the answer demonstrate skills/experience relevant to the role?
-5. **Enthusiasm** (0-20): Does the candidate show genuine interest and motivation?
+4. **Job Fit** (0-20): Does the answer demonstrate skills/experience directly relevant to THIS specific role and its requirements?
+5. **Enthusiasm & Insight** (0-20): Does the candidate show genuine interest, understanding of the role, and thoughtful reflection?
+
+CRITICAL SCORING RULES:
+- **SEVERELY PENALIZE** answers that are:
+  - Very short (under 20 words): Maximum 5 points per category
+  - Generic/templated (could apply to any job): Maximum 10 points per category
+  - Vague with no specific examples: Maximum 10 points per category
+  - Placeholder text like "test", "asdf", or random characters: Score 0
+  - Not addressing the question at all: Score 0 for that answer
+  
+- **REWARD** answers that:
+  - Reference specific requirements mentioned in the job description
+  - Include concrete examples with measurable outcomes
+  - Show understanding of the company/role context
+  - Demonstrate thoughtful reflection on their experience
+
+A strong candidate should score 70-100. An average candidate 40-69. Poor responses should score below 40.
+Empty, placeholder, or nonsensical answers MUST score 0-10.
 
 CRITICAL: You must respond with ONLY a valid JSON object in this exact format:
 {
   "score": <number between 0-100>,
-  "breakdown": "<brief 1-2 sentence summary of strengths and areas for improvement>"
+  "breakdown": "<2-3 sentences: mention specific strengths or weaknesses from their actual answers, reference the job requirements where relevant>"
 }
 
 Do not include any text before or after the JSON object.`;
 
     const userPrompt = `Evaluate these interview answers for the position of "${jobTitle}".
 
-Job Description: ${jobDescription || "Not provided"}
-Job Requirements: ${jobRequirements || "Not provided"}
+JOB CONTEXT (use this to assess job fit):
+- Description: ${jobDescription || "Not provided"}
+- Requirements: ${jobRequirements || "Not provided"}
 
 CANDIDATE'S RESPONSES:
 ${qaPairs}
 
-Provide your evaluation as a JSON object with a score (0-100) and brief breakdown.`;
+IMPORTANT: 
+- Be strict with short or generic answers
+- Reference specific content from their answers in your breakdown
+- Consider how well answers align with the job requirements above
+- Provide a personalized assessment, not generic feedback
+
+Provide your evaluation as a JSON object.`;
 
     console.log("Calling Featherless AI for evaluation...");
 

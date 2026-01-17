@@ -25,45 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import { useJobs } from "@/context/JobsContext";
 
-// Mock candidate data for demonstration
-const mockCandidates = [
-  {
-    id: "1",
-    firstName: "Sarah",
-    lastName: "Johnson",
-    cvLink: "https://example.com/cv/sarah-johnson.pdf",
-    score: 95,
-  },
-  {
-    id: "2",
-    firstName: "Michael",
-    lastName: "Chen",
-    cvLink: "https://example.com/cv/michael-chen.pdf",
-    score: 92,
-  },
-  {
-    id: "3",
-    firstName: "Emily",
-    lastName: "Rodriguez",
-    cvLink: "https://example.com/cv/emily-rodriguez.pdf",
-    score: 89,
-  },
-  {
-    id: "4",
-    firstName: "David",
-    lastName: "Kim",
-    cvLink: "https://example.com/cv/david-kim.pdf",
-    score: 87,
-  },
-  {
-    id: "5",
-    firstName: "Lisa",
-    lastName: "Thompson",
-    cvLink: "https://example.com/cv/lisa-thompson.pdf",
-    score: 85,
-  },
-];
-
 export default function JobDetail() {
   const { jobId } = useParams<{ jobId: string }>();
   const { jobs } = useJobs();
@@ -88,31 +49,38 @@ export default function JobDetail() {
     );
   }
 
-  // Mock analytics data (placeholder values)
-  const analytics = {
-    completedApplications: 24,
-    averageScore: 78,
-    selectedForReview: 8,
-  };
+  // Calculate real analytics from candidates
+  const completedApplications = job.candidates.length;
+  const averageScore =
+    completedApplications > 0
+      ? Math.round(
+          job.candidates.reduce((sum, c) => sum + c.score, 0) /
+            completedApplications
+        )
+      : 0;
+  const selectedForReview = job.candidates.filter((c) => c.score >= 80).length;
+
+  // Sort candidates by score for top CVs
+  const topCandidates = [...job.candidates].sort((a, b) => b.score - a.score);
 
   const kpiData = [
     {
       title: "Completed Applications",
-      value: analytics.completedApplications.toString(),
+      value: completedApplications.toString(),
       icon: ClipboardCheck,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
       title: "Average Candidate Score",
-      value: `${analytics.averageScore}/100`,
+      value: completedApplications > 0 ? `${averageScore}/100` : "N/A",
       icon: Star,
       color: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
       title: "Selected for Review",
-      value: analytics.selectedForReview.toString(),
+      value: selectedForReview.toString(),
       icon: UserCheck,
       color: "text-success",
       bgColor: "bg-success/10",
@@ -146,14 +114,6 @@ export default function JobDetail() {
           </p>
         </div>
 
-        {/* Sample Data Banner */}
-        <div className="mb-8 rounded-xl bg-muted/50 border border-border p-4">
-          <p className="text-sm text-muted-foreground">
-            <strong>Sample Data:</strong> The data shown below is placeholder
-            data for demonstration purposes.
-          </p>
-        </div>
-
         {/* KPI Cards */}
         <div className="grid gap-6 sm:grid-cols-3 mb-8">
           {kpiData.map((kpi) => (
@@ -181,83 +141,113 @@ export default function JobDetail() {
             <div>
               <h2 className="text-lg font-semibold">Top Candidates</h2>
               <p className="text-sm text-muted-foreground">
-                View the highest-scoring candidate CVs
+                {topCandidates.length > 0
+                  ? "View the highest-scoring candidate CVs and motivation letters"
+                  : "No candidates have applied yet"}
               </p>
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="gradient">
-                  <FileText className="mr-2 h-4 w-4" />
-                  View Top CVs
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Top Candidate CVs</DialogTitle>
-                </DialogHeader>
-                <div className="mt-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>First Name</TableHead>
-                        <TableHead>Last Name</TableHead>
-                        <TableHead className="text-right">Score</TableHead>
-                        <TableHead className="text-right">CV</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockCandidates.map((candidate) => (
-                        <TableRow key={candidate.id}>
-                          <TableCell className="font-medium">
-                            {candidate.firstName}
-                          </TableCell>
-                          <TableCell>{candidate.lastName}</TableCell>
-                          <TableCell className="text-right">
-                            {candidate.score}/100
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" asChild>
-                              <a
-                                href={candidate.cvLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                View PDF
-                              </a>
-                            </Button>
-                          </TableCell>
+            {topCandidates.length > 0 && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="gradient">
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Top CVs
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Top Candidate CVs</DialogTitle>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>First Name</TableHead>
+                          <TableHead>Last Name</TableHead>
+                          <TableHead className="text-right">Score</TableHead>
+                          <TableHead className="text-right">CV</TableHead>
+                          <TableHead className="text-right">
+                            Motivation Letter
+                          </TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </DialogContent>
-            </Dialog>
+                      </TableHeader>
+                      <TableBody>
+                        {topCandidates.map((candidate) => (
+                          <TableRow key={candidate.id}>
+                            <TableCell className="font-medium">
+                              {candidate.firstName}
+                            </TableCell>
+                            <TableCell>{candidate.lastName}</TableCell>
+                            <TableCell className="text-right">
+                              {candidate.score}/100
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" asChild>
+                                <a
+                                  href={candidate.cvUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  CV
+                                </a>
+                              </Button>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" asChild>
+                                <a
+                                  href={candidate.motivationUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  Letter
+                                </a>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {/* Quick preview of top 3 candidates */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {mockCandidates.slice(0, 3).map((candidate, index) => (
-              <div
-                key={candidate.id}
-                className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
-                  {index + 1}
+          {topCandidates.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {topCandidates.slice(0, 3).map((candidate, index) => (
+                <div
+                  key={candidate.id}
+                  className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {candidate.firstName} {candidate.lastName}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Score: {candidate.score}/100
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">
-                    {candidate.firstName} {candidate.lastName}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Score: {candidate.score}/100
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Waiting for candidates to apply...</p>
+              <p className="text-sm mt-1">
+                Share the job link to start receiving applications
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

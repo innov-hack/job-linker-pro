@@ -108,7 +108,9 @@ export default function CreateJob() {
 
   const copyToClipboard = useCallback(() => {
     if (generatedLink) {
-      navigator.clipboard.writeText(generatedLink);
+      const jobId = generatedLink.split('/').pop();
+      const applyLink = `${window.location.origin}/apply/${jobId}`;
+      navigator.clipboard.writeText(applyLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -143,7 +145,7 @@ export default function CreateJob() {
                 </p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 rounded-lg bg-background border border-border px-4 py-3 text-sm font-mono truncate">
-                    {generatedLink}
+                    {window.location.origin}/apply/{generatedLink.split('/').pop()}
                   </div>
                   <Button
                     size="icon"
@@ -161,9 +163,9 @@ export default function CreateJob() {
 
               <div className="mt-6 rounded-xl bg-muted/50 p-4 text-left">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> This is a placeholder link. In
-                  production, this will connect to your candidate tracking
-                  service.
+                  <strong>How it works:</strong> Share this link with candidates.
+                  They'll upload their CV and motivation letter, answer interview
+                  questions, and their responses will appear in your dashboard.
                 </p>
               </div>
 

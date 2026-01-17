@@ -145,6 +145,9 @@ export default function Apply() {
   const isUploadFormValid = Boolean(firstName.trim() && lastName.trim() && cvFile && motivationFile);
 
   const handleUploadSubmit = () => {
+    // Debug: alert to confirm button click
+    alert(`Button clicked! firstName: "${firstName}", lastName: "${lastName}"`);
+    
     // For testing - allow proceeding with just names
     if (!firstName.trim() || !lastName.trim()) {
       toast({
@@ -155,14 +158,7 @@ export default function Apply() {
       return;
     }
     
-    // Files are optional for now
-    if (!cvFile) {
-      toast({
-        title: "Note",
-        description: "Proceeding without CV file (optional for testing).",
-      });
-    }
-    
+    // Proceed to questions
     setStep("questions");
   };
 

@@ -1,22 +1,22 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Link2, BarChart3, Zap } from "lucide-react";
+import { ArrowRight, Brain, BarChart3, Sparkles } from "lucide-react";
 
 const features = [
   {
-    icon: Link2,
-    title: "Smart Job Links",
-    description: "Generate unique links for each job posting that track engagement automatically.",
+    icon: Brain,
+    title: "AI-Powered Interviews",
+    description: "Automatically generate personalized interview questions tailored to each job's specific requirements and responsibilities.",
   },
   {
     icon: BarChart3,
-    title: "Real-time Analytics",
-    description: "Monitor link opens, visitor counts, and engagement metrics in one dashboard.",
+    title: "Smart Candidate Scoring",
+    description: "AI evaluates candidate responses based on relevance, depth, and alignment with your job requirements—instantly.",
   },
   {
-    icon: Zap,
-    title: "Instant Setup",
-    description: "Upload your job description and get a shareable link in seconds.",
+    icon: Sparkles,
+    title: "Effortless Setup",
+    description: "Upload your job description, share a link, and let Talently handle the screening while you focus on top candidates.",
   },
 ];
 
@@ -28,12 +28,13 @@ export default function Landing() {
         <div className="container-page">
           <div className="mx-auto max-w-3xl text-center animate-slide-up">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Share Jobs with{" "}
-              <span className="gradient-text">Smart Links</span>
+              Hire Smarter with{" "}
+              <span className="gradient-text">Talently</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-muted-foreground sm:text-xl">
-              Create trackable job posting links in seconds. Upload your job description,
-              generate a unique link, and monitor candidate engagement—all in one place.
+              The AI-powered hiring assistant that generates personalized interview questions 
+              based on your job description, then evaluates candidate responses to identify 
+              the best fit for your role—automatically.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button asChild size="xl" variant="gradient">
@@ -55,10 +56,10 @@ export default function Landing() {
         <div className="container-page">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything you need to recruit smarter
+              AI-driven candidate screening, simplified
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Streamline your hiring process with powerful link tracking and analytics.
+              Let Talently handle the initial screening so you can focus on the candidates who truly match your needs.
             </p>
           </div>
 
@@ -87,10 +88,10 @@ export default function Landing() {
         <div className="container-page">
           <div className="card-elevated mx-auto max-w-4xl p-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight">
-              Ready to streamline your hiring?
+              Ready to find your perfect candidates?
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Start creating trackable job links today. No credit card required.
+              Start screening smarter with AI-powered interviews. No credit card required.
             </p>
             <Button asChild size="lg" className="mt-8" variant="gradient">
               <Link to="/create">

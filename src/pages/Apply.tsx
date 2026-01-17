@@ -145,8 +145,7 @@ export default function Apply() {
   const isUploadFormValid = Boolean(firstName.trim() && lastName.trim() && cvFile && motivationFile);
 
   const handleUploadSubmit = () => {
-    console.log("handleUploadSubmit called", { firstName, lastName, cvFile, motivationFile, isUploadFormValid });
-    
+    // For testing - allow proceeding with just names
     if (!firstName.trim() || !lastName.trim()) {
       toast({
         title: "Missing information",
@@ -155,16 +154,15 @@ export default function Apply() {
       });
       return;
     }
-    if (!cvFile || !motivationFile) {
+    
+    // Files are optional for now
+    if (!cvFile) {
       toast({
-        title: "Missing files",
-        description: "Please upload both your CV and motivation letter.",
-        variant: "destructive",
+        title: "Note",
+        description: "Proceeding without CV file (optional for testing).",
       });
-      return;
     }
     
-    console.log("Setting step to questions");
     setStep("questions");
   };
 

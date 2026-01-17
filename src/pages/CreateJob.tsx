@@ -1,0 +1,385 @@
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Upload,
+  FileText,
+  X,
+  Loader2,
+  Link2,
+  Copy,
+  Check,
+  ArrowLeft,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface UploadedFile {
+  name: string;
+  size: number;
+}
+
+export default function CreateJob() {
+  const navigate = useNavigate();
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const [formData, setFormData] = useState({
+    title: "",
+    company: "",
+    location: "",
+    description: "",
+    requirements: "",
+  });
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files)
+      .filter((file) => file.type === "application/pdf")
+      .map((file) => ({ name: file.name, size: file.size }));
+
+    setFiles((prev) => [...prev, ...droppedFiles]);
+  }, []);
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        const selectedFiles = Array.from(e.target.files)
+          .filter((file) => file.type === "application/pdf")
+          .map((file) => ({ name: file.name, size: file.size }));
+        setFiles((prev) => [...prev, ...selectedFiles]);
+      }
+    },
+    []
+  );
+
+  const removeFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+
+      // Simulate processing
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Generate placeholder link
+      const linkId = Math.random().toString(36).substring(2, 10);
+      setGeneratedLink(`https://linkrecruit.app/job/${linkId}`);
+      setIsSubmitting(false);
+    },
+    []
+  );
+
+  const copyToClipboard = useCallback(() => {
+    if (generatedLink) {
+      navigator.clipboard.writeText(generatedLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [generatedLink]);
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  if (generatedLink) {
+    return (
+      <div className="min-h-screen py-12 sm:py-16">
+        <div className="container-page">
+          <div className="mx-auto max-w-2xl">
+            <div className="card-elevated p-8 sm:p-12 text-center animate-scale-in">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                <Check className="h-8 w-8 text-success" />
+              </div>
+              <h1 className="mt-6 text-2xl font-bold sm:text-3xl">
+                Job Link Created!
+              </h1>
+              <p className="mt-3 text-muted-foreground">
+                Your job posting link is ready to share. Candidates who visit
+                this link will be tracked in your dashboard.
+              </p>
+
+              <div className="mt-8 rounded-xl bg-secondary p-4">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Your shareable link
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-lg bg-background border border-border px-4 py-3 text-sm font-mono truncate">
+                    {generatedLink}
+                  </div>
+                  <Button
+                    size="icon"
+                    variant={copied ? "success" : "default"}
+                    onClick={copyToClipboard}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-xl bg-muted/50 p-4 text-left">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> This is a placeholder link. In
+                  production, this will connect to your candidate tracking
+                  service.
+                </p>
+              </div>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <Button variant="outline" onClick={() => setGeneratedLink(null)}>
+                  Create Another
+                </Button>
+                <Button onClick={() => navigate("/dashboard")}>
+                  View Dashboard
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen py-12 sm:py-16">
+      <div className="container-page">
+        <div className="mx-auto max-w-3xl">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-6"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold sm:text-4xl">Create Job Link</h1>
+            <p className="mt-3 text-lg text-muted-foreground">
+              Upload a job description or fill in the details manually to
+              generate a trackable link.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* File Upload Section */}
+            <div className="card-elevated p-6 sm:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Upload className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">Upload Job Description</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop PDF files or click to browse
+                  </p>
+                </div>
+              </div>
+
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={cn(
+                  "relative rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200",
+                  isDragOver
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                )}
+              >
+                <input
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+                <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
+                <p className="mt-4 text-sm font-medium">
+                  Drop PDF files here, or click to browse
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Supports multiple PDF files
+                </p>
+              </div>
+
+              {files.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {files.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 rounded-lg bg-secondary p-3"
+                    >
+                      <FileText className="h-5 w-5 text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="rounded-full p-1 hover:bg-muted transition-colors"
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Manual Details Section */}
+            <div className="card-elevated p-6 sm:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">Job Details</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Fill in the job information manually
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Job Title</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      placeholder="e.g. Senior Software Engineer"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="input-modern"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company Name</Label>
+                    <Input
+                      id="company"
+                      name="company"
+                      placeholder="e.g. Acme Corp"
+                      value={formData.company}
+                      onChange={handleInputChange}
+                      className="input-modern"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">
+                    Location{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    placeholder="e.g. San Francisco, CA or Remote"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    className="input-modern"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">
+                    Job Description{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
+                    rows={4}
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    className="input-modern resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="requirements">
+                    Requirements{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Textarea
+                    id="requirements"
+                    name="requirements"
+                    placeholder="List the skills, experience, and qualifications needed..."
+                    rows={4}
+                    value={formData.requirements}
+                    onChange={handleInputChange}
+                    className="input-modern resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                size="lg"
+                variant="gradient"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Generating Link...
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="mr-2 h-5 w-5" />
+                    Generate Link
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

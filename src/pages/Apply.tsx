@@ -351,24 +351,31 @@ export default function Apply() {
               </div>
             </div>
 
-            {/* Validation hint */}
-            {!isUploadFormValid && (
-              <p className="text-sm text-muted-foreground mb-4 text-center">
-                Please fill in your name and upload both documents to continue.
-              </p>
-            )}
+            {/* Status indicators */}
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium mb-2">Required fields:</p>
+              <ul className="text-sm space-y-1">
+                <li className={firstName.trim() ? "text-success" : "text-muted-foreground"}>
+                  {firstName.trim() ? "✓" : "○"} First name
+                </li>
+                <li className={lastName.trim() ? "text-success" : "text-muted-foreground"}>
+                  {lastName.trim() ? "✓" : "○"} Last name
+                </li>
+                <li className={cvFile ? "text-success" : "text-muted-foreground"}>
+                  {cvFile ? "✓" : "○"} CV uploaded
+                </li>
+                <li className={motivationFile ? "text-success" : "text-muted-foreground"}>
+                  {motivationFile ? "✓" : "○"} Motivation letter uploaded
+                </li>
+              </ul>
+            </div>
 
             <Button
               type="button"
               variant="gradient"
               size="xl"
               className="w-full"
-              disabled={!isUploadFormValid}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleUploadSubmit();
-              }}
+              onClick={handleUploadSubmit}
             >
               Continue to Questions
               <ArrowRight className="ml-2 h-5 w-5" />

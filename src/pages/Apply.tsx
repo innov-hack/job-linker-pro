@@ -4,19 +4,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, FileText, CheckCircle, ArrowRight, Send, Loader2, Sparkles, PartyPopper } from "lucide-react";
+import { Upload, FileText, CheckCircle, ArrowRight, Send, Loader2, Sparkles, PartyPopper, Brain } from "lucide-react";
 import { useJobs, Job } from "@/context/JobsContext";
+import { supabase } from "@/integrations/supabase/client";
 import confetti from "canvas-confetti";
 
-const QUESTIONS = [
-  "Tell us about your most challenging project and how you overcame the obstacles.",
-  "What motivates you to apply for this position?",
-  "Describe a situation where you had to work with a difficult team member. How did you handle it?",
-  "Where do you see yourself professionally in the next 5 years?",
-  "What unique skills or perspectives would you bring to our team?",
-];
+type Step = "loading" | "upload" | "generating" | "questions" | "complete" | "notfound";
 
-type Step = "loading" | "upload" | "questions" | "complete" | "notfound";
+// Simple PDF text extraction (extracts readable text from PDF)
+async function extractTextFromPdf(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Convert to string and try to extract text content
+    let text = "";
+    const decoder = new TextDecoder("utf-8", { fatal: false });
+    const rawText = decoder.decode(uint8Array);
+    
+    // Extract text between stream and endstream (PDF text objects)
+    const streamMatches = rawText.match(/stream[\s\S]*?endstream/g);
+    if (streamMatches) {
+      for (const match of streamMatches) {
+        // Look for text in parentheses (PDF text strings)
+        const textMatches = match.match(/\(([^)]+)\)/g);
+        if (textMatches) {
+          for (const tm of textMatches) {
+            const extracted = tm.slice(1, -1);
+            if (extracted.length > 2 && /[a-zA-Z]/.test(extracted)) {
+              text += extracted + " ";
+            }
+          }
+        }
+      }
+    }
+    
+    // Clean up the text
+    text = text.replace(/\s+/g, " ").trim();
+    
+    // If we got some text, return it (limited to first 3000 chars for API)
+    if (text.length > 50) {
+      return text.substring(0, 3000);
+    }
+    
+    // Fallback: just return file info
+    return `CV uploaded: ${file.name} (${Math.round(file.size / 1024)}KB)`;
+  } catch (error) {
+    console.error("Error extracting PDF text:", error);
+    return `CV uploaded: ${file.name}`;
+  }
+}
 
 export default function Apply() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -24,13 +61,16 @@ export default function Apply() {
 
   const [step, setStep] = useState<Step>("loading");
   const [job, setJob] = useState<Job | null>(null);
+  const [jobDescription, setJobDescription] = useState<string>("");
+  const [jobRequirements, setJobRequirements] = useState<string>("");
   
   // Form data
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [motivationFile, setMotivationFile] = useState<File | null>(null);
-  const [answers, setAnswers] = useState<string[]>(["", "", "", "", ""]);
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
   
   // UI state
   const [error, setError] = useState("");
@@ -43,19 +83,37 @@ export default function Apply() {
       return;
     }
 
-    getJob(jobId)
-      .then((foundJob) => {
+    // Fetch job with description and requirements from database
+    async function fetchJobData() {
+      try {
+        const { data: jobData, error: jobError } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("id", jobId)
+          .single();
+
+        if (jobError || !jobData) {
+          setStep("notfound");
+          return;
+        }
+
+        const foundJob = await getJob(jobId);
         if (foundJob) {
           setJob(foundJob);
+          setJobDescription(jobData.description || "");
+          setJobRequirements(jobData.requirements || "");
           setStep("upload");
           incrementVisitors(jobId);
         } else {
           setStep("notfound");
         }
-      })
-      .catch(() => {
+      } catch (err) {
+        console.error("Error fetching job:", err);
         setStep("notfound");
-      });
+      }
+    }
+
+    fetchJobData();
   }, [jobId]);
 
   const fireConfetti = useCallback(() => {
@@ -84,8 +142,61 @@ export default function Apply() {
     }
   }
 
+  // Generate questions using AI
+  async function generateQuestions(): Promise<void> {
+    setStep("generating");
+    setError("");
+
+    try {
+      // Extract text from CV if uploaded
+      let cvText = "";
+      if (cvFile) {
+        cvText = await extractTextFromPdf(cvFile);
+      }
+
+      console.log("Calling generate-questions edge function...");
+
+      const { data, error: fnError } = await supabase.functions.invoke("generate-questions", {
+        body: {
+          cvText,
+          jobTitle: job?.title || "",
+          jobDescription: jobDescription,
+          jobRequirements: jobRequirements,
+        },
+      });
+
+      if (fnError) {
+        console.error("Edge function error:", fnError);
+        throw new Error(fnError.message);
+      }
+
+      console.log("Generated questions response:", data);
+
+      if (data?.questions && Array.isArray(data.questions)) {
+        setQuestions(data.questions);
+        setAnswers(data.questions.map(() => ""));
+        setStep("questions");
+      } else {
+        throw new Error("Invalid response format");
+      }
+    } catch (err) {
+      console.error("Error generating questions:", err);
+      // Use fallback questions
+      const fallbackQuestions = [
+        "Tell us about your most relevant experience for this role.",
+        "What interests you most about this position?",
+        "Describe a challenging project you've worked on and how you handled it.",
+        "How do you approach learning new skills or technologies?",
+        "What unique value would you bring to our team?",
+      ];
+      setQuestions(fallbackQuestions);
+      setAnswers(fallbackQuestions.map(() => ""));
+      setStep("questions");
+    }
+  }
+
   // Go to questions step
-  function handleContinue() {
+  async function handleContinue() {
     const first = firstName.trim();
     const last = lastName.trim();
     
@@ -95,7 +206,7 @@ export default function Apply() {
     }
     
     setError("");
-    setStep("questions");
+    await generateQuestions();
   }
 
   // Update answer
@@ -159,6 +270,31 @@ export default function Apply() {
     );
   }
 
+  // GENERATING QUESTIONS STATE
+  if (step === "generating") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="relative mb-6">
+            <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+              <Brain className="h-10 w-10 text-primary animate-pulse" />
+            </div>
+            <Sparkles className="absolute top-0 right-1/3 h-5 w-5 text-amber-400 animate-bounce" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Generating Your Interview Questions</h2>
+          <p className="text-muted-foreground mb-4">
+            Our AI is creating personalized questions based on your CV and the job requirements...
+          </p>
+          <div className="flex justify-center gap-1">
+            <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen py-12 bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <div className="max-w-2xl mx-auto px-4">
@@ -217,7 +353,10 @@ export default function Apply() {
 
             {/* CV Upload */}
             <div className="mb-4">
-              <Label>CV / Resume (PDF) - Optional</Label>
+              <Label>CV / Resume (PDF) - Optional but recommended</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Upload your CV to receive personalized interview questions
+              </p>
               <label className="mt-1 flex flex-col items-center justify-center h-28 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                 {cvFile ? (
                   <div className="flex items-center gap-2">
@@ -286,15 +425,20 @@ export default function Apply() {
         {/* QUESTIONS STEP */}
         {step === "questions" && (
           <div className="bg-card rounded-xl border p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-2">Interview Questions</h2>
-            <p className="text-sm text-muted-foreground mb-6">Please answer all questions.</p>
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-semibold">Interview Questions</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              These questions were generated based on your profile and the job requirements.
+            </p>
 
             <div className="space-y-6">
-              {QUESTIONS.map((question, idx) => (
+              {questions.map((question, idx) => (
                 <div key={idx}>
                   <Label className="text-base">{idx + 1}. {question}</Label>
                   <Textarea
-                    value={answers[idx]}
+                    value={answers[idx] || ""}
                     onChange={(e) => updateAnswer(idx, e.target.value)}
                     placeholder="Type your answer..."
                     className="mt-2 min-h-[100px]"

@@ -13,9 +13,9 @@ serve(async (req) => {
   try {
     const { cvText, jobTitle, jobDescription, jobRequirements } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const FEATHERLESS_API_KEY = Deno.env.get("FEATHERLESS_API_KEY");
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error("FEATHERLESS_API_KEY is not configured");
     }
 
     const systemPrompt = `You are an expert HR interviewer who creates thoughtful, relevant interview questions. 
@@ -40,20 +40,24 @@ CANDIDATE CV CONTENT: ${cvText || "CV not uploaded - generate general questions 
 
 Generate exactly 5 relevant, open-ended interview questions.`;
 
-    console.log("Generating questions with Lovable AI...");
+    console.log("Generating questions with Featherless AI (Qwen2.5-72B-Instruct)...");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.featherless.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${FEATHERLESS_API_KEY}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://lovable.dev",
+        "X-Title": "Job Application Questions Generator",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "Qwen/Qwen2.5-72B-Instruct",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        temperature: 0.7,
+        max_tokens: 1024,
       }),
     });
 

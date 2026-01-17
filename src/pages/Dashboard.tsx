@@ -40,15 +40,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const activityData = [
-  { day: "Mon", opens: 45 },
-  { day: "Tue", opens: 52 },
-  { day: "Wed", opens: 78 },
-  { day: "Thu", opens: 89 },
-  { day: "Fri", opens: 95 },
-  { day: "Sat", opens: 34 },
-  { day: "Sun", opens: 28 },
-];
+const generateActivityData = () => {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  return days.map(day => ({
+    day,
+    opens: Math.floor(Math.random() * 80) + 20, // Random between 20-100
+  }));
+};
+
+const activityData = generateActivityData();
 
 export default function Dashboard() {
   const { jobs, loading, deleteJob, updateJobStatus } = useJobs();

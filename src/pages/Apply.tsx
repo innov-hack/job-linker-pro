@@ -186,14 +186,14 @@ export default function Apply() {
     setIsSubmitting(true);
 
     try {
-      // Add candidate to the job
+      // Add candidate to the job (files are optional now)
       await addCandidate(jobId!, {
         firstName,
         lastName,
-        cvFileName: cvFile!.name,
-        cvUrl: URL.createObjectURL(cvFile!),
-        motivationFileName: motivationFile!.name,
-        motivationUrl: URL.createObjectURL(motivationFile!),
+        cvFileName: cvFile?.name || "no-cv-uploaded.pdf",
+        cvUrl: cvFile ? URL.createObjectURL(cvFile) : "",
+        motivationFileName: motivationFile?.name || "no-motivation-uploaded.pdf",
+        motivationUrl: motivationFile ? URL.createObjectURL(motivationFile) : "",
       });
 
       fireConfetti();

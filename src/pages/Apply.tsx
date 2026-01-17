@@ -31,6 +31,7 @@ export default function Apply() {
   const [motivationFile, setMotivationFile] = useState<File | null>(null);
   const [answers, setAnswers] = useState<string[]>(["", "", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fireConfetti = useCallback(() => {
     confetti({
@@ -82,8 +83,9 @@ export default function Apply() {
   };
 
   const goToQuestions = () => {
+    setError(null);
     if (!firstName.trim() || !lastName.trim()) {
-      toast({ title: "Missing information", description: "Please enter your first and last name.", variant: "destructive" });
+      setError("Please enter your first and last name to continue.");
       return;
     }
     setCurrentStep(2);
@@ -225,6 +227,13 @@ export default function Apply() {
                 </label>
               </div>
             </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-destructive font-medium text-center">{error}</p>
+              </div>
+            )}
 
             <Button type="button" variant="gradient" size="xl" className="w-full" onClick={goToQuestions}>
               Continue to Questions

@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, FileText, CheckCircle, ArrowRight, Send, Loader2, Sparkles, PartyPopper, Brain } from "lucide-react";
+import { Upload, FileText, CheckCircle, ArrowRight, Send, Loader2, Sparkles, PartyPopper, Brain, Clock, ChevronRight } from "lucide-react";
 import { useJobs, Job } from "@/context/JobsContext";
 import { supabase } from "@/integrations/supabase/client";
 import confetti from "canvas-confetti";
+import { Progress } from "@/components/ui/progress";
 
 type Step = "loading" | "upload" | "generating" | "questions" | "complete" | "notfound";
 
@@ -71,6 +72,9 @@ export default function Apply() {
   const [motivationFile, setMotivationFile] = useState<File | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   // UI state
   const [error, setError] = useState("");
@@ -216,6 +220,64 @@ export default function Apply() {
       updated[index] = value;
       return updated;
     });
+  }
+
+  // Timer effect for questions
+  useEffect(() => {
+    if (step !== "questions") return;
+
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    // Reset timer for new question
+    setTimeLeft(120);
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          // Auto-advance to next question when time runs out
+          if (currentQuestionIndex < questions.length - 1) {
+            setCurrentQuestionIndex(idx => idx + 1);
+            return 120; // Reset for next question
+          } else {
+            // Last question - stop timer
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            return 0;
+          }
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [step, currentQuestionIndex, questions.length]);
+
+  // Go to next question
+  function handleNextQuestion() {
+    if (!answers[currentQuestionIndex]?.trim()) {
+      setError("Please provide an answer before continuing.");
+      return;
+    }
+    setError("");
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(idx => idx + 1);
+      setTimeLeft(120); // Reset timer for next question
+    }
+  }
+
+  // Format time for display
+  function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   // Upload file to storage
@@ -495,57 +557,110 @@ export default function Apply() {
 
         {/* QUESTIONS STEP */}
         {step === "questions" && (
-          <div className="bg-card rounded-xl border p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Brain className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Interview Questions</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-6">
-              These questions were generated based on your profile and the job requirements.
-            </p>
-
-            <div className="space-y-6">
-              {questions.map((question, idx) => (
-                <div key={idx}>
-                  <Label className="text-base">{idx + 1}. {question}</Label>
-                  <Textarea
-                    value={answers[idx] || ""}
-                    onChange={(e) => updateAnswer(idx, e.target.value)}
-                    placeholder="Type your answer..."
-                    className="mt-2 min-h-[100px]"
-                  />
+          <>
+            {/* Timer Bar - Fixed at top */}
+            <div className="fixed top-0 left-0 right-0 z-50 bg-card border-b shadow-md">
+              <div className="max-w-2xl mx-auto px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className={`h-5 w-5 ${timeLeft <= 30 ? 'text-destructive animate-pulse' : 'text-primary'}`} />
+                    <span className={`font-mono text-lg font-bold ${timeLeft <= 30 ? 'text-destructive' : 'text-foreground'}`}>
+                      {formatTime(timeLeft)}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    Question {currentQuestionIndex + 1} of {questions.length}
+                  </span>
                 </div>
-              ))}
+                <Progress 
+                  value={(timeLeft / 120) * 100} 
+                  className={`h-2 ${timeLeft <= 30 ? '[&>div]:bg-destructive' : ''}`}
+                />
+              </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <p className="text-destructive text-sm text-center">{error}</p>
-              </div>
-            )}
+            {/* Spacer for fixed header */}
+            <div className="h-20" />
 
-            {/* Submit Button */}
-            <Button
-              type="button"
-              className="w-full mt-6"
-              size="lg"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  Submit Application
-                  <Send className="ml-2 h-4 w-4" />
-                </>
+            <div className="bg-card rounded-xl border p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold">Interview Questions</h2>
+              </div>
+              
+              {/* Question Progress Dots */}
+              <div className="flex items-center gap-2 mb-6">
+                {questions.map((_, idx) => (
+                  <div 
+                    key={idx}
+                    className={`h-2 flex-1 rounded-full transition-colors ${
+                      idx < currentQuestionIndex 
+                        ? 'bg-green-500' 
+                        : idx === currentQuestionIndex 
+                          ? 'bg-primary' 
+                          : 'bg-muted'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Current Question */}
+              <div className="min-h-[300px]">
+                <Label className="text-base font-medium">
+                  {currentQuestionIndex + 1}. {questions[currentQuestionIndex]}
+                </Label>
+                <Textarea
+                  value={answers[currentQuestionIndex] || ""}
+                  onChange={(e) => updateAnswer(currentQuestionIndex, e.target.value)}
+                  placeholder="Type your answer..."
+                  className="mt-3 min-h-[180px] text-base"
+                  autoFocus
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-destructive text-sm text-center">{error}</p>
+                </div>
               )}
-            </Button>
-          </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex gap-3 mt-6">
+                {currentQuestionIndex < questions.length - 1 ? (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    size="lg"
+                    onClick={handleNextQuestion}
+                  >
+                    Next Question
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    size="lg"
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Submit Application
+                        <Send className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {/* COMPLETE STEP */}

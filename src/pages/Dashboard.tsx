@@ -17,82 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
-// Mock data
-const kpiData = [
-  {
-    title: "Links Created",
-    value: "12",
-    change: "+3 this week",
-    icon: Link2,
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-  },
-  {
-    title: "Total Opens",
-    value: "847",
-    change: "+12% from last week",
-    icon: Eye,
-    color: "text-accent",
-    bgColor: "bg-accent/10",
-  },
-  {
-    title: "Unique Visitors",
-    value: "423",
-    change: "+8% from last week",
-    icon: Users,
-    color: "text-success",
-    bgColor: "bg-success/10",
-  },
-];
-
-const jobsData = [
-  {
-    id: 1,
-    title: "Senior Software Engineer",
-    company: "Acme Corp",
-    created: "2024-01-15",
-    status: "Active",
-    opens: 234,
-    visitors: 156,
-  },
-  {
-    id: 2,
-    title: "Product Designer",
-    company: "Design Studio",
-    created: "2024-01-14",
-    status: "Active",
-    opens: 189,
-    visitors: 98,
-  },
-  {
-    id: 3,
-    title: "Marketing Manager",
-    company: "Growth Co",
-    created: "2024-01-12",
-    status: "Active",
-    opens: 145,
-    visitors: 67,
-  },
-  {
-    id: 4,
-    title: "Data Analyst",
-    company: "Analytics Inc",
-    created: "2024-01-10",
-    status: "Active",
-    opens: 112,
-    visitors: 54,
-  },
-  {
-    id: 5,
-    title: "DevOps Engineer",
-    company: "Cloud Systems",
-    created: "2024-01-08",
-    status: "Active",
-    opens: 89,
-    visitors: 42,
-  },
-];
+import { useJobs } from "@/context/JobsContext";
 
 const activityData = [
   { day: "Mon", opens: 45 },
@@ -105,7 +30,39 @@ const activityData = [
 ];
 
 export default function Dashboard() {
+  const { jobs } = useJobs();
   const maxOpens = Math.max(...activityData.map((d) => d.opens));
+
+  // Calculate KPIs from jobs data
+  const totalOpens = jobs.reduce((sum, job) => sum + job.opens, 0);
+  const totalVisitors = jobs.reduce((sum, job) => sum + job.visitors, 0);
+
+  const kpiData = [
+    {
+      title: "Links Created",
+      value: jobs.length.toString(),
+      change: "+1 this week",
+      icon: Link2,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+    },
+    {
+      title: "Total Opens",
+      value: totalOpens.toString(),
+      change: "+12% from last week",
+      icon: Eye,
+      color: "text-accent",
+      bgColor: "bg-accent/10",
+    },
+    {
+      title: "Unique Visitors",
+      value: totalVisitors.toString(),
+      change: "+8% from last week",
+      icon: Users,
+      color: "text-success",
+      bgColor: "bg-success/10",
+    },
+  ];
 
   return (
     <div className="min-h-screen py-12 sm:py-16">
@@ -221,7 +178,7 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {jobsData.map((job) => (
+                    {jobs.map((job) => (
                       <TableRow key={job.id}>
                         <TableCell>
                           <div>
@@ -252,8 +209,10 @@ export default function Dashboard() {
                           {job.visitors}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon">
-                            <ExternalLink className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" asChild>
+                            <a href={job.link} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
                           </Button>
                         </TableCell>
                       </TableRow>

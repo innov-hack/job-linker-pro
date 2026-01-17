@@ -57,7 +57,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
 
 export default function Apply() {
   const { jobId } = useParams<{ jobId: string }>();
-  const { getJob, addCandidate, incrementVisitors } = useJobs();
+  const { getJob, addCandidate, incrementVisitors, incrementCompleted } = useJobs();
 
   const [step, setStep] = useState<Step>("loading");
   const [job, setJob] = useState<Job | null>(null);
@@ -306,6 +306,9 @@ export default function Apply() {
         motivationUrl,
         score,
       });
+      
+      // Increment completed count on successful submission
+      await incrementCompleted(jobId!);
       
       fireConfetti();
       setStep("complete");
